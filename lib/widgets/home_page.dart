@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -36,8 +37,14 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           children: [
             const DateSelector(),
-            FutureBuilder(
-              future: FirebaseFirestore.instance.collection("tasks").get(),
+            StreamBuilder(
+              stream: FirebaseFirestore.instance
+                  .collection("tasks")
+                  .where(
+                    "creator",
+                    isEqualTo: FirebaseAuth.instance.currentUser!.uid,
+                  )
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -49,41 +56,53 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: ListView.builder(
                     itemCount: snapshot.data!.docs.length,
                     itemBuilder: (context, index) {
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: TaskCard(
-                              color: hexToColor(
-                                snapshot.data!.docs[index].data()["color"],
+                      return Dismissible(
+                        key: ValueKey(snapshot.data!.docs[index].id),
+                        onDismissed: (direction) async {
+                          if (direction == DismissDirection.endToStart) {
+                            final docId = snapshot.data!.docs[index].id;
+                            await FirebaseFirestore.instance
+                                .collection("tasks")
+                                .doc(docId)
+                                .delete();
+                          }
+                        },
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TaskCard(
+                                color: hexToColor(
+                                  snapshot.data!.docs[index].data()["color"],
+                                ),
+                                headerText: snapshot.data!.docs[index]
+                                    .data()["tittle"],
+                                descriptionText: snapshot.data!.docs[index]
+                                    .data()["description"],
+                                scheduledDate: snapshot.data!.docs[index]
+                                    .data()["date"]
+                                    .toString(),
                               ),
-                              headerText: snapshot.data!.docs[index]
-                                  .data()["tittle"],
-                              descriptionText: snapshot.data!.docs[index]
-                                  .data()["description"],
-                              scheduledDate: snapshot.data!.docs[index]
-                                  .data()["date"]
-                                  .toString(),
                             ),
-                          ),
-                          Container(
-                            height: 50,
-                            width: 50,
-                            decoration: BoxDecoration(
-                              color: strengthenColor(
-                                const Color.fromRGBO(246, 222, 194, 1),
-                                0.69,
+                            Container(
+                              height: 15,
+                              width: 15,
+                              decoration: BoxDecoration(
+                                color: strengthenColor(
+                                  const Color.fromRGBO(246, 222, 194, 1),
+                                  0.69,
+                                ),
+                                shape: BoxShape.circle,
                               ),
-                              shape: BoxShape.circle,
                             ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.all(12.0),
-                            child: Text(
-                              '10:00AM',
-                              style: TextStyle(fontSize: 17),
+                            const Padding(
+                              padding: EdgeInsets.all(12.0),
+                              child: Text(
+                                '10:00AM',
+                                style: TextStyle(fontSize: 17),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       );
                     },
                   ),
