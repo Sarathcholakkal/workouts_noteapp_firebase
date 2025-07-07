@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:todo_app/widgets/utils.dart';
+import 'package:uuid/uuid.dart';
 
 class AddNewTask extends StatefulWidget {
   const AddNewTask({super.key});
@@ -30,16 +31,22 @@ class _AddNewTaskState extends State<AddNewTask> {
 
   Future<void> updloadTasktodo() async {
     try {
-      final data = await FirebaseFirestore.instance.collection("tasks").add({
-        "tittle": titleController.text.trim(),
-        "description": descriptionController.text.trim(),
-        "postedAt": FieldValue.serverTimestamp(),
-        "creator": FirebaseAuth.instance.currentUser!.uid,
-        "date": selectedDate,
-        "color": rgbToHex(_selectedColor),
-      });
-      print(data.id);
-    } catch (e) {}
+      final id = const Uuid().v4();
+      final data = await FirebaseFirestore.instance
+          .collection("tasks")
+          .doc(id)
+          .set({
+            "tittle": titleController.text.trim(),
+            "description": descriptionController.text.trim(),
+            "postedAt": FieldValue.serverTimestamp(),
+            "creator": FirebaseAuth.instance.currentUser!.uid,
+            "date": selectedDate,
+            "color": rgbToHex(_selectedColor),
+          });
+      print(id);
+    } catch (e) {
+      print(e);
+    }
   }
 
   @override
